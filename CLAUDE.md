@@ -1,8 +1,13 @@
 ## Agent skills
 
+### Model Guidance
+
+Our default model is Opus 5.5 High for optimal performance and quality.  
+For easier or exploratory tasks (e.g., exploration, information retrieval), subagents can use Sonnet 5.5 High to save on costs and increase efficiency.
+
 ### Issue tracker
 
-Issues live in GitHub Issues for aniketmandloi/exactclerk, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are managed in GitHub Issues for `aniketmandloi/exactclerk`, using the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
@@ -14,7 +19,7 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 
 ### Code quality
 
-All contributions should maintain great code quality.
+All contributions should maintain excellent code quality.
 
 ### Commit guidelines
 
