@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "exactclerk",
-  description: "exactclerk",
+  title: { default: "ExactClerk", template: "%s · ExactClerk" },
+  description: "Title paperwork for independent used-car dealers: checked against the state's rules, filed, and chased until the title clears.",
 };
 
 export default function RootLayout({
