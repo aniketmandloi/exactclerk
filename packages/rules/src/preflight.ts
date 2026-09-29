@@ -1,4 +1,4 @@
-import type { Check, Ruleset } from "./ruleset";
+import type { Check, Rule, Ruleset } from "./ruleset";
 
 type FieldValue = string | number | boolean | null;
 
@@ -37,6 +37,11 @@ function isViolated(check: Check, deal: DealRecord): boolean {
 	}
 }
 
+function applies(rule: Rule, deal: DealRecord): boolean {
+	const { lienPresent } = rule.appliesTo;
+	return lienPresent === undefined || lienPresent === deal.lienPresent;
+}
+
 function verdictFor(findings: Finding[]): PreflightResult["verdict"] {
 	if (findings.some((f) => f.kind === "defect")) return "fix_before_filing";
 	if (findings.some((f) => f.kind === "confirm")) return "waiting_on_you";
@@ -49,7 +54,9 @@ export function runPreflight(
 	_asOf: Date,
 ): PreflightResult {
 	const findings = ruleset.rules
-		.filter((rule) => isViolated(rule.violatedWhen, deal))
+		.filter(
+			(rule) => applies(rule, deal) && isViolated(rule.violatedWhen, deal),
+		)
 		.map(
 			(rule): Finding => ({
 				ruleId: rule.id,

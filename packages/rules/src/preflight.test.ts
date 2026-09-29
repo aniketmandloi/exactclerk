@@ -36,10 +36,33 @@ const odometerRule = {
 	effectiveFrom: "2020-01-01",
 };
 
+const lienReleaseRule = {
+	id: "lien-release",
+	text: "A recorded lien must be released before the title can transfer.",
+	citation: CITATION,
+	appliesTo: { lienPresent: true },
+	violatedWhen: { op: "equals", field: "lienReleaseAttached", value: false },
+	kind: "defect",
+	document: "Title (back)",
+	whoActs: "Dealer",
+	action: "Ask the lienholder for a lien release and attach it.",
+	effectiveFrom: "2020-01-01",
+};
+
 const ruleset = parseRuleset({
 	version: "tx-1",
-	rules: [signatureRule, odometerRule],
+	rules: [signatureRule, odometerRule, lienReleaseRule],
 });
+
+const cleanSale: DealRecord = {
+	kind: "retail_sale",
+	lienPresent: false,
+	fields: {
+		sellerSignaturePresent: { value: true, confidence: 0.99 },
+		odometerReading: { value: 48201, confidence: 0.99 },
+		lienReleaseAttached: { value: false, confidence: 0.99 },
+	},
+};
 
 const unsignedSale: DealRecord = {
 	kind: "retail_sale",
@@ -85,5 +108,27 @@ describe("runPreflight", () => {
 		expect(result.findings.map((f) => [f.ruleId, f.kind, f.whoActs])).toEqual([
 			["odometer-reading", "confirm", "Dealer"],
 		]);
+	});
+
+	it("passes a clean packet to clerk review with no Findings", () => {
+		const result = runPreflight(cleanSale, ruleset, asOf);
+
+		expect(result.verdict).toBe("ready_for_clerk_review");
+		expect(result.findings).toEqual([]);
+	});
+
+	it("applies a lien Rule only to Deals that have a lien", () => {
+		const tradeInWithLien: DealRecord = {
+			...cleanSale,
+			kind: "trade_in",
+			lienPresent: true,
+		};
+
+		expect(
+			runPreflight(tradeInWithLien, ruleset, asOf).findings.map(
+				(f) => f.ruleId,
+			),
+		).toEqual(["lien-release"]);
+		expect(runPreflight(cleanSale, ruleset, asOf).findings).toEqual([]);
 	});
 });
