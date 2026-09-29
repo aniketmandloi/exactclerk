@@ -14,7 +14,15 @@ import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
 
-export default function InviteStaff({ dealerId }: { dealerId: string }) {
+export default function InviteStaff({
+  dealerId,
+  dealershipName,
+  onInvited,
+}: {
+  dealerId: string;
+  dealershipName?: string;
+  onInvited: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -22,7 +30,10 @@ export default function InviteStaff({ dealerId }: { dealerId: string }) {
     <Card>
       <CardHeader>
         <CardTitle>Invite staff</CardTitle>
-        <CardDescription>Send an email invitation to join your dealership.</CardDescription>
+        <CardDescription>
+          They'll get an email with a link to join {dealershipName ?? "your dealership"}. Staff can
+          work Deals; only the owner manages the dealership.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -41,6 +52,7 @@ export default function InviteStaff({ dealerId }: { dealerId: string }) {
               return;
             }
             setEmail("");
+            onInvited();
             toast.success(`Invitation sent to ${email}`);
           }}
         >
@@ -49,12 +61,14 @@ export default function InviteStaff({ dealerId }: { dealerId: string }) {
             <Input
               id="staff-email"
               type="email"
+              autoComplete="off"
+              placeholder="name@yourdealership.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Sending…" : "Send invitation"}
           </Button>
         </form>
