@@ -4,7 +4,6 @@ import { Skeleton } from "@exactclerk/ui/components/skeleton";
 
 import { authClient } from "@/lib/auth-client";
 
-import Billing from "./billing";
 import CreateDealership from "./create-dealership";
 import InviteStaff from "./invite-staff";
 
@@ -31,7 +30,6 @@ export default function Dashboard() {
       {isOwner && (
         <div className="grid gap-4 md:grid-cols-2">
           <InviteStaff dealerId={member.organizationId} />
-          <Billing />
         </div>
       )}
     </div>
