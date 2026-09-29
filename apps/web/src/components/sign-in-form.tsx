@@ -17,6 +17,7 @@ import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
+import Guilloche from "./guilloche";
 import Loader from "./loader";
 
 export default function SignInForm({ next }: { next: string }) {
@@ -70,13 +71,14 @@ export default function SignInForm({ next }: { next: string }) {
   }
 
   return (
-    <Card className="mx-auto mt-10 w-full max-w-md">
+    <Card className="mx-auto mt-6 w-full max-w-sm pt-0 sm:mt-12">
+      <Guilloche className="text-primary/40" />
       <CardHeader>
-        <CardTitle className="text-lg">Sign in</CardTitle>
+        <CardTitle className="font-bold text-2xl [font-stretch:125%]">Sign in</CardTitle>
         <CardDescription>
           {codeSent
-            ? "Enter the 6-digit code we emailed you."
-            : "We'll email you a code. No password needed."}
+            ? `Enter the 6-digit code we emailed to ${form.state.values.email}.`
+            : "We'll email you a 6-digit code, so there's no password. New here? The same code creates your account."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -106,7 +108,7 @@ export default function SignInForm({ next }: { next: string }) {
                 />
                 <div id={`${field.name}-error`} role="alert">
                   {field.state.meta.errors.map((error) => (
-                    <p key={error?.message} className="text-destructive">
+                    <p key={error?.message} className="text-destructive text-sm">
                       {error?.message}
                     </p>
                   ))}
@@ -127,6 +129,8 @@ export default function SignInForm({ next }: { next: string }) {
                     pattern="[0-9]*"
                     maxLength={6}
                     autoComplete="one-time-code"
+                    autoFocus
+                    className="h-14 text-center font-mono text-2xl tracking-[0.5em] md:text-2xl"
                     aria-invalid={field.state.meta.errors.length > 0}
                     aria-describedby={`${field.name}-error`}
                     value={field.state.value}
@@ -135,7 +139,7 @@ export default function SignInForm({ next }: { next: string }) {
                   />
                   <div id={`${field.name}-error`} role="alert">
                     {field.state.meta.errors.map((error) => (
-                      <p key={error?.message} className="text-destructive">
+                      <p key={error?.message} className="text-destructive text-sm">
                         {error?.message}
                       </p>
                     ))}
