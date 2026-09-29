@@ -205,4 +205,40 @@ describe("runPreflight", () => {
 		expect(record).toEqual(unsignedSale);
 		expect(ruleset).toEqual(before);
 	});
+
+	it("asks the Dealer to confirm when two fields that should agree differ", () => {
+		const addressRule = {
+			...odometerRule,
+			id: "buyer-address",
+			violatedWhen: {
+				op: "differs",
+				fields: ["buyerMailingAddress", "licenceAddress"],
+			},
+		};
+		const addressRuleset = parseRuleset({
+			version: "tx-1",
+			rules: [addressRule],
+		});
+		const mismatch: DealRecord = {
+			...cleanSale,
+			fields: {
+				buyerMailingAddress: { value: "1 Elm St", confidence: 0.99 },
+				licenceAddress: { value: "9 Oak Ave", confidence: 0.99 },
+			},
+		};
+		const match: DealRecord = {
+			...mismatch,
+			fields: {
+				buyerMailingAddress: { value: "1 Elm St", confidence: 0.99 },
+				licenceAddress: { value: "1 Elm St", confidence: 0.99 },
+			},
+		};
+
+		expect(runPreflight(mismatch, addressRuleset, asOf).verdict).toBe(
+			"waiting_on_you",
+		);
+		expect(runPreflight(match, addressRuleset, asOf).verdict).toBe(
+			"ready_for_clerk_review",
+		);
+	});
 });

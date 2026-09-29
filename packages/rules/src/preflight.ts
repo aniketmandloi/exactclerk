@@ -32,8 +32,10 @@ function isViolated(check: Check, deal: DealRecord): boolean {
 			const field = deal.fields[check.field];
 			return field !== undefined && field.confidence < check.threshold;
 		}
-		default:
-			throw new Error(`Check "${check.op}" is not implemented`);
+		case "differs": {
+			const [a, b] = check.fields.map((name) => deal.fields[name]?.value);
+			return a != null && b != null && a !== b;
+		}
 	}
 }
 
