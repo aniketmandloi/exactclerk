@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { dealRepository } from "./deal-repository";
 
 const ownerA: Actor = { kind: "dealer", userId: "user-a", dealerId: "dealer-a", role: "owner" };
+const staffB: Actor = { kind: "dealer", userId: "user-b2", dealerId: "dealer-b", role: "staff" };
 const clerk: Actor = { kind: "exactclerk", userId: "clerk-1", role: "clerk" };
 const leadClerk: Actor = { kind: "exactclerk", userId: "lead-1", role: "lead_clerk" };
 const admin: Actor = { kind: "exactclerk", userId: "admin-1", role: "admin" };
@@ -84,5 +85,15 @@ describe("dealRepository", () => {
     await expect(dealRepository(db, ownerA).assignClerk(a.id, "clerk-1")).rejects.toThrow();
     await expect(dealRepository(db, clerk).create({ vin: "VIN-X" })).rejects.toThrow();
     await expect(dealRepository(db, leadClerk).update(a.id, { vin: "EDITED" })).rejects.toThrow();
+  });
+
+  it("keeps a Dealer's staff out of another Dealer's Deals as well", async () => {
+    const a = await dealRepository(db, ownerA).create({ vin: "VIN-A" });
+    const repo = dealRepository(db, staffB);
+
+    expect(await repo.list()).toEqual([]);
+    expect(await repo.get(a.id)).toBeNull();
+    expect(await repo.update(a.id, { vin: "HIJACKED" })).toBeNull();
+    expect((await repo.create({ vin: "VIN-B" })).dealerId).toBe("dealer-b");
   });
 });
