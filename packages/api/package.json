@@ -1,0 +1,22 @@
+{
+  "name": "@exactclerk/api",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@exactclerk/auth": "workspace:*",
+    "@exactclerk/db": "workspace:*",
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@exactclerk/config": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

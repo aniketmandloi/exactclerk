@@ -1,0 +1,3 @@
+{
+  "extends": "@exactclerk/config/tsconfig.base.json"
+}
