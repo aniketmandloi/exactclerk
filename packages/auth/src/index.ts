@@ -4,8 +4,10 @@ import type { Database } from "@exactclerk/db";
 import * as schema from "@exactclerk/db/schema/auth";
 import { polar, checkout, portal } from "@polar-sh/better-auth";
 import { betterAuth } from "better-auth";
+import { emailOTP } from "better-auth/plugins";
 
 import { createPolarClient } from "./lib/payments";
+import type { Mailer } from "./mailer";
 
 export type AuthConfig = {
   BETTER_AUTH_URL: string;
@@ -18,6 +20,7 @@ export type AuthConfig = {
 export function createAuth(
   env: AuthConfig,
   database: Database,
+  mailer: Mailer,
   desktopOrigins: readonly string[] = [],
 ) {
   return betterAuth({
@@ -32,7 +35,7 @@ export function createAuth(
       "exp://",
       "http://localhost:8081",
     ],
-    emailAndPassword: { enabled: true },
+    emailAndPassword: { enabled: false },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
@@ -43,9 +46,19 @@ export function createAuth(
       },
     },
     plugins: [
+      emailOTP({
+        async sendVerificationOTP({ email, otp }) {
+          await mailer.send({
+            to: email,
+            subject: "Your ExactClerk sign-in code",
+            text: `Your ExactClerk sign-in code is ${otp}. It expires in 5 minutes.`,
+          });
+        },
+      }),
       polar({
         client: createPolarClient(env),
-        createCustomerOnSignUp: true,
+        // The Dealer pays, not each user, so no Polar customer per sign-up; #28 decides when one is created.
+        createCustomerOnSignUp: false,
         use: [
           checkout({
             products: [{ productId: "your-product-id", slug: "pro" }],
