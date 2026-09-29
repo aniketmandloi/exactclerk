@@ -32,9 +32,25 @@ _Avoid_: Regulations, checklist
 A run of a Title Packet against a State Ruleset before Filing, producing Findings.
 _Avoid_: Validation, audit
 
+**Rule**:
+One requirement in a State Ruleset, with its source citation, the situations it applies to, and the Finding it produces.
+_Avoid_: Validation, check
+
 **Finding**:
-One specific defect or missing item a Preflight Check flags, tied to the rule it violates.
+One specific item a Preflight Check flags, tied to the Rule that produced it. It is a Defect, a Confirm, or an Advisory.
 _Avoid_: Error, warning
+
+**Defect**:
+A Finding where the Title Packet breaks a Rule; blocks Filing.
+_Avoid_: Error
+
+**Confirm**:
+A Finding where a document read or Dealer-entered value is uncertain; blocks clerk review until the Dealer answers.
+_Avoid_: Warning
+
+**Advisory**:
+A Finding that informs but does not block.
+_Avoid_: Note, warning
 
 **Filing Channel**:
 The route by which a Title Packet reaches a Title Authority: an electronic system, a portal, mail, or an agent.
