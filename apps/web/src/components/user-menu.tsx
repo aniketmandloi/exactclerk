@@ -19,12 +19,12 @@ export default function UserMenu() {
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending) {
-    return <Skeleton className="h-9 w-24" />;
+    return <Skeleton className="h-8 w-24" />;
   }
 
   if (!session) {
     return (
-      <Link href="/login" className={buttonVariants({ variant: "outline" })}>
+      <Link href="/login" className={buttonVariants({ size: "sm" })}>
         Sign in
       </Link>
     );
@@ -32,10 +32,10 @@ export default function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {session.user.name || session.user.email}
+      <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="max-w-44" />}>
+        <span className="truncate">{session.user.name || session.user.email}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-card">
+      <DropdownMenuContent align="end" className="bg-card">
         <DropdownMenuGroup>
           <DropdownMenuLabel>{session.user.email}</DropdownMenuLabel>
           <DropdownMenuSeparator />
