@@ -1,4 +1,5 @@
 import type { Context as ApiContext } from "@exactclerk/api/context";
+import { getActor } from "@exactclerk/auth/get-actor";
 import type { Context as HonoContext } from "hono";
 
 import { db } from "./services";
@@ -15,6 +16,7 @@ export async function createContext({ context }: CreateContextOptions): Promise<
   return {
     db,
     session,
+    actor: await getActor(auth, context.req.raw.headers),
   };
 }
 

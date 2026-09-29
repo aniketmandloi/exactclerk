@@ -24,7 +24,8 @@ export function dealRepository(db: Database, actor: Actor) {
         .insert(deal)
         .values({ id: crypto.randomUUID(), dealerId, vin: input.vin })
         .returning();
-      return created!;
+      if (!created) throw new Error("The Deal was not created");
+      return created;
     },
 
     list() {
