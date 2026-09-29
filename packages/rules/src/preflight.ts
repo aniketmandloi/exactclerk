@@ -37,9 +37,22 @@ function isViolated(check: Check, deal: DealRecord): boolean {
 	}
 }
 
+const KIND_ORDER: Finding["kind"][] = ["defect", "confirm", "advisory"];
+
+function inEffect(rule: Rule, asOf: Date): boolean {
+	const day = asOf.toISOString().slice(0, 10);
+	return (
+		rule.effectiveFrom <= day &&
+		(rule.effectiveTo === undefined || day <= rule.effectiveTo)
+	);
+}
+
 function applies(rule: Rule, deal: DealRecord): boolean {
-	const { lienPresent } = rule.appliesTo;
-	return lienPresent === undefined || lienPresent === deal.lienPresent;
+	const { dealKind, lienPresent } = rule.appliesTo;
+	return (
+		(dealKind === undefined || dealKind === deal.kind) &&
+		(lienPresent === undefined || lienPresent === deal.lienPresent)
+	);
 }
 
 function verdictFor(findings: Finding[]): PreflightResult["verdict"] {
@@ -51,11 +64,14 @@ function verdictFor(findings: Finding[]): PreflightResult["verdict"] {
 export function runPreflight(
 	deal: DealRecord,
 	ruleset: Ruleset,
-	_asOf: Date,
+	asOf: Date,
 ): PreflightResult {
 	const findings = ruleset.rules
 		.filter(
-			(rule) => applies(rule, deal) && isViolated(rule.violatedWhen, deal),
+			(rule) =>
+				inEffect(rule, asOf) &&
+				applies(rule, deal) &&
+				isViolated(rule.violatedWhen, deal),
 		)
 		.map(
 			(rule): Finding => ({
@@ -67,7 +83,8 @@ export function runPreflight(
 				whoActs: rule.whoActs,
 				action: rule.action,
 			}),
-		);
+		)
+		.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
 
 	return {
 		rulesetVersion: ruleset.version,

@@ -131,4 +131,78 @@ describe("runPreflight", () => {
 		).toEqual(["lien-release"]);
 		expect(runPreflight(cleanSale, ruleset, asOf).findings).toEqual([]);
 	});
+
+	it("applies a trade-in Rule only to trade-in acquisitions", () => {
+		const tradeInRule = {
+			...signatureRule,
+			id: "trade-in-only",
+			appliesTo: { dealKind: "trade_in" },
+		};
+		const tradeInRuleset = parseRuleset({
+			version: "tx-1",
+			rules: [tradeInRule],
+		});
+
+		expect(
+			runPreflight({ ...unsignedSale, kind: "trade_in" }, tradeInRuleset, asOf)
+				.findings,
+		).toHaveLength(1);
+		expect(runPreflight(unsignedSale, tradeInRuleset, asOf).findings).toEqual(
+			[],
+		);
+	});
+
+	it("ignores a Rule outside its effective date range", () => {
+		const bounded = parseRuleset({
+			version: "tx-1",
+			rules: [
+				{
+					...signatureRule,
+					effectiveFrom: "2026-01-01",
+					effectiveTo: "2026-12-31",
+				},
+			],
+		});
+
+		expect(
+			runPreflight(unsignedSale, bounded, new Date("2025-12-31")).findings,
+		).toEqual([]);
+		expect(
+			runPreflight(unsignedSale, bounded, new Date("2026-06-01")).findings,
+		).toHaveLength(1);
+		expect(
+			runPreflight(unsignedSale, bounded, new Date("2027-01-01")).findings,
+		).toEqual([]);
+	});
+
+	it("lists Defects first, then Confirms, then Advisories", () => {
+		const advisoryRule = { ...odometerRule, id: "advisory", kind: "advisory" };
+		const mixed = parseRuleset({
+			version: "tx-1",
+			rules: [advisoryRule, odometerRule, signatureRule],
+		});
+		const everythingWrong: DealRecord = {
+			...unsignedSale,
+			fields: {
+				sellerSignaturePresent: { value: false, confidence: 0.99 },
+				odometerReading: { value: 48201, confidence: 0.4 },
+			},
+		};
+
+		expect(
+			runPreflight(everythingWrong, mixed, asOf).findings.map((f) => f.kind),
+		).toEqual(["defect", "confirm", "advisory"]);
+	});
+
+	it("gives the same Findings for the same record and Ruleset, without changing either", () => {
+		const record = structuredClone(unsignedSale);
+		const before = structuredClone(ruleset);
+
+		const first = runPreflight(record, ruleset, asOf);
+		const second = runPreflight(record, ruleset, asOf);
+
+		expect(second).toEqual(first);
+		expect(record).toEqual(unsignedSale);
+		expect(ruleset).toEqual(before);
+	});
 });
