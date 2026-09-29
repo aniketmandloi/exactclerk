@@ -12,6 +12,7 @@ import { Label } from "@exactclerk/ui/components/label";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import Guilloche from "@/components/guilloche";
 import { authClient } from "@/lib/auth-client";
 
 function slugify(name: string) {
@@ -26,11 +27,14 @@ export default function CreateDealership() {
   const [pending, setPending] = useState(false);
 
   return (
-    <Card className="mx-auto mt-10 w-full max-w-md">
+    <Card className="mx-auto mt-6 w-full max-w-md pt-0 sm:mt-12">
+      <Guilloche className="text-primary/40" />
       <CardHeader>
-        <CardTitle className="text-lg">Set up your dealership</CardTitle>
+        <CardTitle className="font-bold text-2xl [font-stretch:125%]">
+          Set up your dealership
+        </CardTitle>
         <CardDescription>
-          Name the dealership your team works under. You can invite staff once it exists.
+          Use the name your dealership trades under. You can invite your staff next.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -54,6 +58,7 @@ export default function CreateDealership() {
               id="dealership-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="organization"
               required
             />
           </div>
