@@ -80,7 +80,9 @@ describe("email one-time-code sign-in", () => {
       }),
     ).rejects.toThrow();
     await expect(
-      auth.api.signInEmail({ body: { email: "owner@dealer.test", password: "correct horse battery" } }),
+      auth.api.signInEmail({
+        body: { email: "owner@dealer.test", password: "correct horse battery" },
+      }),
     ).rejects.toThrow();
   });
 });
@@ -197,16 +199,30 @@ describe("who is acting", () => {
     const { owner, dealerId } = await dealershipWithStaff();
     const staffLater = await ctx.signIn("sam@dealer.test");
 
-    expect(await getActor(ctx.auth, owner)).toMatchObject({ kind: "dealer", dealerId, role: "owner" });
-    expect(await getActor(ctx.auth, staffLater)).toMatchObject({ kind: "dealer", dealerId, role: "staff" });
+    expect(await getActor(ctx.auth, owner)).toMatchObject({
+      kind: "dealer",
+      dealerId,
+      role: "owner",
+    });
+    expect(await getActor(ctx.auth, staffLater)).toMatchObject({
+      kind: "dealer",
+      dealerId,
+      role: "staff",
+    });
   });
 
   it("knows ExactClerk staff by their staff role, apart from any Dealer", async () => {
     const clerk = await ctx.signIn("clerk@exactclerk.test");
-    await ctx.db.update(user).set({ staffRole: "lead_clerk" }).where(eq(user.email, "clerk@exactclerk.test"));
+    await ctx.db
+      .update(user)
+      .set({ staffRole: "lead_clerk" })
+      .where(eq(user.email, "clerk@exactclerk.test"));
     const freshSession = await ctx.signIn("clerk@exactclerk.test");
 
-    expect(await getActor(ctx.auth, freshSession)).toMatchObject({ kind: "exactclerk", role: "lead_clerk" });
+    expect(await getActor(ctx.auth, freshSession)).toMatchObject({
+      kind: "exactclerk",
+      role: "lead_clerk",
+    });
     expect(clerk).toBeDefined();
   });
 

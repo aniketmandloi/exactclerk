@@ -58,7 +58,12 @@ export function createAuth(
           member !== undefined &&
           isDealerRole(member.role) &&
           can(
-            { kind: "dealer", userId: member.userId, dealerId: member.organizationId, role: member.role },
+            {
+              kind: "dealer",
+              userId: member.userId,
+              dealerId: member.organizationId,
+              role: member.role,
+            },
             { billing: ["read"] },
           );
         if (!mayUseBilling) {

@@ -1,68 +1,68 @@
 {
-	"version": "tx-placeholder-0",
-	"rules": [
-		{
-			"id": "title-seller-signature",
-			"text": "Seller signature is missing on the assignment line.",
-			"citation": "Title Manual, dealer chapter (section TBD)",
-			"appliesTo": {},
-			"violatedWhen": {
-				"op": "equals",
-				"field": "sellerSignaturePresent",
-				"value": false
-			},
-			"kind": "defect",
-			"document": "Title (front)",
-			"whoActs": "Previous owner (or Dealer if the Dealer holds the assigned title)",
-			"action": "Get the previous owner to sign the assignment line, then re-upload the front of the title.",
-			"effectiveFrom": "2020-01-01"
-		},
-		{
-			"id": "lien-release",
-			"text": "A lienholder is printed on the title, and no lien release is attached.",
-			"citation": "Title Manual, dealer chapter (section TBD)",
-			"appliesTo": { "lienPresent": true },
-			"violatedWhen": {
-				"op": "equals",
-				"field": "lienReleaseAttached",
-				"value": false
-			},
-			"kind": "defect",
-			"document": "Title (back)",
-			"whoActs": "Dealer (request from the lienholder)",
-			"action": "Ask the lienholder for a lien release or an electronic release, and attach it.",
-			"effectiveFrom": "2020-01-01"
-		},
-		{
-			"id": "odometer-reading",
-			"text": "We could not read the odometer digits with confidence.",
-			"citation": "Title Manual, dealer chapter (section TBD)",
-			"appliesTo": {},
-			"violatedWhen": {
-				"op": "confidenceBelow",
-				"field": "odometerReading",
-				"threshold": 0.9
-			},
-			"kind": "confirm",
-			"document": "Odometer disclosure",
-			"whoActs": "Dealer",
-			"action": "Type the mileage you see on the signed disclosure so we do not guess.",
-			"effectiveFrom": "2020-01-01"
-		},
-		{
-			"id": "buyer-address-match",
-			"text": "Buyer's mailing address differs from the driver's licence address.",
-			"citation": "Title Manual, dealer chapter (section TBD)",
-			"appliesTo": { "dealKind": "retail_sale" },
-			"violatedWhen": {
-				"op": "differs",
-				"fields": ["buyerMailingAddress", "licenceAddress"]
-			},
-			"kind": "confirm",
-			"document": "Form 130-U",
-			"whoActs": "Dealer",
-			"action": "Confirm the mailing address with the Buyer. No change needed if it is intentional.",
-			"effectiveFrom": "2020-01-01"
-		}
-	]
+  "version": "tx-placeholder-0",
+  "rules": [
+    {
+      "id": "title-seller-signature",
+      "text": "Seller signature is missing on the assignment line.",
+      "citation": "Title Manual, dealer chapter (section TBD)",
+      "appliesTo": {},
+      "violatedWhen": {
+        "op": "equals",
+        "field": "sellerSignaturePresent",
+        "value": false
+      },
+      "kind": "defect",
+      "document": "Title (front)",
+      "whoActs": "Previous owner (or Dealer if the Dealer holds the assigned title)",
+      "action": "Get the previous owner to sign the assignment line, then re-upload the front of the title.",
+      "effectiveFrom": "2020-01-01"
+    },
+    {
+      "id": "lien-release",
+      "text": "A lienholder is printed on the title, and no lien release is attached.",
+      "citation": "Title Manual, dealer chapter (section TBD)",
+      "appliesTo": { "lienPresent": true },
+      "violatedWhen": {
+        "op": "equals",
+        "field": "lienReleaseAttached",
+        "value": false
+      },
+      "kind": "defect",
+      "document": "Title (back)",
+      "whoActs": "Dealer (request from the lienholder)",
+      "action": "Ask the lienholder for a lien release or an electronic release, and attach it.",
+      "effectiveFrom": "2020-01-01"
+    },
+    {
+      "id": "odometer-reading",
+      "text": "We could not read the odometer digits with confidence.",
+      "citation": "Title Manual, dealer chapter (section TBD)",
+      "appliesTo": {},
+      "violatedWhen": {
+        "op": "confidenceBelow",
+        "field": "odometerReading",
+        "threshold": 0.9
+      },
+      "kind": "confirm",
+      "document": "Odometer disclosure",
+      "whoActs": "Dealer",
+      "action": "Type the mileage you see on the signed disclosure so we do not guess.",
+      "effectiveFrom": "2020-01-01"
+    },
+    {
+      "id": "buyer-address-match",
+      "text": "Buyer's mailing address differs from the driver's licence address.",
+      "citation": "Title Manual, dealer chapter (section TBD)",
+      "appliesTo": { "dealKind": "retail_sale" },
+      "violatedWhen": {
+        "op": "differs",
+        "fields": ["buyerMailingAddress", "licenceAddress"]
+      },
+      "kind": "confirm",
+      "document": "Form 130-U",
+      "whoActs": "Dealer",
+      "action": "Confirm the mailing address with the Buyer. No change needed if it is intentional.",
+      "effectiveFrom": "2020-01-01"
+    }
+  ]
 }

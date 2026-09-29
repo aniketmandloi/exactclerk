@@ -1,145 +1,132 @@
 import { describe, expect, it } from "vitest";
 
-import {
-	type DealRecord,
-	type GoldenCase,
-	parseRuleset,
-	runGoldenSet,
-} from "./index";
+import { type DealRecord, type GoldenCase, parseRuleset, runGoldenSet } from "./index";
 
 const CITATION = "Title Manual, dealer chapter (section TBD)";
 const asOf = new Date("2026-06-01");
 
 const rule = (id: string, field: string, kind: "defect" | "confirm") => ({
-	id,
-	text: `${id} text`,
-	citation: CITATION,
-	appliesTo: {},
-	violatedWhen: { op: "equals", field, value: false },
-	kind,
-	document: "Title (front)",
-	whoActs: "Dealer",
-	action: `${id} action`,
-	effectiveFrom: "2020-01-01",
+  id,
+  text: `${id} text`,
+  citation: CITATION,
+  appliesTo: {},
+  violatedWhen: { op: "equals", field, value: false },
+  kind,
+  document: "Title (front)",
+  whoActs: "Dealer",
+  action: `${id} action`,
+  effectiveFrom: "2020-01-01",
 });
 
 const deal = (fields: Record<string, boolean>): DealRecord => ({
-	kind: "retail_sale",
-	lienPresent: false,
-	fields: Object.fromEntries(
-		Object.entries(fields).map(([name, value]) => [
-			name,
-			{ value, confidence: 0.99 },
-		]),
-	),
+  kind: "retail_sale",
+  lienPresent: false,
+  fields: Object.fromEntries(
+    Object.entries(fields).map(([name, value]) => [name, { value, confidence: 0.99 }]),
+  ),
 });
 
 const ruleset = parseRuleset({
-	version: "tx-1",
-	rules: [
-		rule("signature", "signed", "defect"),
-		rule("odometer", "odometerRead", "confirm"),
-	],
+  version: "tx-1",
+  rules: [rule("signature", "signed", "defect"), rule("odometer", "odometerRead", "confirm")],
 });
 
 const cases: GoldenCase[] = [
-	{
-		name: "clean",
-		deal: deal({ signed: true, odometerRead: true }),
-		expected: [],
-	},
-	{
-		name: "unsigned",
-		deal: deal({ signed: false, odometerRead: true }),
-		expected: [{ ruleId: "signature", kind: "defect", hardReject: true }],
-	},
+  {
+    name: "clean",
+    deal: deal({ signed: true, odometerRead: true }),
+    expected: [],
+  },
+  {
+    name: "unsigned",
+    deal: deal({ signed: false, odometerRead: true }),
+    expected: [{ ruleId: "signature", kind: "defect", hardReject: true }],
+  },
 ];
 
 describe("runGoldenSet", () => {
-	it("scores a Ruleset that catches every expected Defect and nothing on a clean packet", () => {
-		const report = runGoldenSet(cases, ruleset, asOf);
+  it("scores a Ruleset that catches every expected Defect and nothing on a clean packet", () => {
+    const report = runGoldenSet(cases, ruleset, asOf);
 
-		expect(report).toMatchObject({
-			defectRecall: 1,
-			hardRejectRecall: 1,
-			nuisanceRate: 0,
-			failures: [],
-		});
-	});
+    expect(report).toMatchObject({
+      defectRecall: 1,
+      hardRejectRecall: 1,
+      nuisanceRate: 0,
+      failures: [],
+    });
+  });
 
-	it("reports a missed Defect as lower recall and names the case", () => {
-		const blind = parseRuleset({
-			version: "tx-2",
-			rules: [rule("odometer", "odometerRead", "confirm")],
-		});
+  it("reports a missed Defect as lower recall and names the case", () => {
+    const blind = parseRuleset({
+      version: "tx-2",
+      rules: [rule("odometer", "odometerRead", "confirm")],
+    });
 
-		const report = runGoldenSet(cases, blind, asOf);
+    const report = runGoldenSet(cases, blind, asOf);
 
-		expect(report.defectRecall).toBe(0);
-		expect(report.hardRejectRecall).toBe(0);
-		expect(report.failures).toEqual(["unsigned: missed defect signature"]);
-	});
+    expect(report.defectRecall).toBe(0);
+    expect(report.hardRejectRecall).toBe(0);
+    expect(report.failures).toEqual(["unsigned: missed defect signature"]);
+  });
 
-	it("counts a clean packet that draws a Finding as nuisance", () => {
-		const noisy = [
-			...cases,
-			{
-				name: "clean-but-noisy",
-				deal: deal({ signed: true, odometerRead: false }),
-				expected: [],
-			},
-		];
+  it("counts a clean packet that draws a Finding as nuisance", () => {
+    const noisy = [
+      ...cases,
+      {
+        name: "clean-but-noisy",
+        deal: deal({ signed: true, odometerRead: false }),
+        expected: [],
+      },
+    ];
 
-		const report = runGoldenSet(noisy, ruleset, asOf);
+    const report = runGoldenSet(noisy, ruleset, asOf);
 
-		expect(report.nuisanceRate).toBe(0.5);
-		expect(report.failures).toEqual([
-			"clean-but-noisy: unexpected confirm odometer",
-		]);
-	});
+    expect(report.nuisanceRate).toBe(0.5);
+    expect(report.failures).toEqual(["clean-but-noisy: unexpected confirm odometer"]);
+  });
 
-	it("fails a case whose expected Confirm is no longer raised", () => {
-		const withConfirm: GoldenCase[] = [
-			{
-				name: "blurry",
-				deal: deal({ signed: true, odometerRead: false }),
-				expected: [{ ruleId: "odometer", kind: "confirm" }],
-			},
-		];
-		const blind = parseRuleset({
-			version: "tx-2",
-			rules: [rule("signature", "signed", "defect")],
-		});
+  it("fails a case whose expected Confirm is no longer raised", () => {
+    const withConfirm: GoldenCase[] = [
+      {
+        name: "blurry",
+        deal: deal({ signed: true, odometerRead: false }),
+        expected: [{ ruleId: "odometer", kind: "confirm" }],
+      },
+    ];
+    const blind = parseRuleset({
+      version: "tx-2",
+      rules: [rule("signature", "signed", "defect")],
+    });
 
-		expect(runGoldenSet(withConfirm, ruleset, asOf).failures).toEqual([]);
-		expect(runGoldenSet(withConfirm, blind, asOf).failures).toEqual([
-			"blurry: missed confirm odometer",
-		]);
-	});
+    expect(runGoldenSet(withConfirm, ruleset, asOf).failures).toEqual([]);
+    expect(runGoldenSet(withConfirm, blind, asOf).failures).toEqual([
+      "blurry: missed confirm odometer",
+    ]);
+  });
 
-	it("fails a case whose Defect Rule was downgraded so it no longer blocks", () => {
-		const downgraded = parseRuleset({
-			version: "tx-2",
-			rules: [{ ...rule("signature", "signed", "defect"), kind: "advisory" }],
-		});
+  it("fails a case whose Defect Rule was downgraded so it no longer blocks", () => {
+    const downgraded = parseRuleset({
+      version: "tx-2",
+      rules: [{ ...rule("signature", "signed", "defect"), kind: "advisory" }],
+    });
 
-		const report = runGoldenSet(cases, downgraded, asOf);
+    const report = runGoldenSet(cases, downgraded, asOf);
 
-		expect(report.defectRecall).toBe(0);
-		expect(report.failures).toEqual(["unsigned: missed defect signature"]);
-	});
+    expect(report.defectRecall).toBe(0);
+    expect(report.failures).toEqual(["unsigned: missed defect signature"]);
+  });
 
-	it("fails a case that draws a blocking Finding nobody expected", () => {
-		const surprising: GoldenCase[] = [
-			{
-				name: "unsigned-and-unread",
-				deal: deal({ signed: false, odometerRead: false }),
-				expected: [{ ruleId: "signature", kind: "defect" }],
-			},
-		];
+  it("fails a case that draws a blocking Finding nobody expected", () => {
+    const surprising: GoldenCase[] = [
+      {
+        name: "unsigned-and-unread",
+        deal: deal({ signed: false, odometerRead: false }),
+        expected: [{ ruleId: "signature", kind: "defect" }],
+      },
+    ];
 
-		expect(runGoldenSet(surprising, ruleset, asOf).failures).toEqual([
-			"unsigned-and-unread: unexpected confirm odometer",
-		]);
-	});
+    expect(runGoldenSet(surprising, ruleset, asOf).failures).toEqual([
+      "unsigned-and-unread: unexpected confirm odometer",
+    ]);
+  });
 });

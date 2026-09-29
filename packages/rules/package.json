@@ -1,17 +1,17 @@
 {
-	"name": "@exactclerk/rules",
-	"type": "module",
-	"exports": {
-		".": "./src/index.ts"
-	},
-	"scripts": {
-		"check-types": "tsc --noEmit"
-	},
-	"dependencies": {
-		"zod": "catalog:"
-	},
-	"devDependencies": {
-		"@exactclerk/config": "workspace:*",
-		"typescript": "^6.0.3"
-	}
+  "name": "@exactclerk/rules",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@exactclerk/config": "workspace:*",
+    "typescript": "^6.0.3"
+  }
 }
