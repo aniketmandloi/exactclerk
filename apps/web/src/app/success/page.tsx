@@ -1,15 +1,41 @@
+import { buttonVariants } from "@exactclerk/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@exactclerk/ui/components/card";
+import { CircleCheck } from "lucide-react";
+import Link from "next/link";
+
+export const metadata = { title: "Payment successful" };
+
 export default async function SuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout_id: string }>;
+  searchParams: Promise<{ checkout_id?: string }>;
 }) {
-  const params = await searchParams;
-  const checkout_id = params.checkout_id;
+  const { checkout_id } = await searchParams;
 
   return (
-    <div className="px-4 py-8">
-      <h1>Payment Successful!</h1>
-      {checkout_id && <p>Checkout ID: {checkout_id}</p>}
-    </div>
+    <Card className="mx-auto mt-10 w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <CircleCheck className="text-success" aria-hidden="true" />
+          Payment successful
+        </CardTitle>
+        {checkout_id && (
+          <CardDescription>
+            Checkout ID: <span className="font-mono">{checkout_id}</span>
+          </CardDescription>
+        )}
+      </CardHeader>
+      <CardContent>
+        <Link href="/dashboard" className={buttonVariants()}>
+          Back to dashboard
+        </Link>
+      </CardContent>
+    </Card>
   );
 }

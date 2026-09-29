@@ -1,47 +1,51 @@
-"use client";
-import { useQuery } from "@tanstack/react-query";
+import { buttonVariants } from "@exactclerk/ui/components/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "@exactclerk/ui/components/card";
+import Link from "next/link";
 
-import { trpc } from "@/utils/trpc";
-
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+const steps = [
+  {
+    title: "Preflight Check",
+    description:
+      "Each Title Packet is checked against the State Ruleset before it is filed, so problems surface while the Dealer can still fix them.",
+  },
+  {
+    title: "Findings that cite the Rule",
+    description:
+      "Every Defect, Confirm and Advisory names the Rule behind it, so you can see why something was flagged.",
+  },
+  {
+    title: "Chase to Cleared",
+    description:
+      "If the Title Authority sends a Rejection, we resolve it and refile until the title clears.",
+  },
+];
 
 export default function Home() {
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions());
-
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-2">
-      <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-      <div className="grid gap-6">
-        <section className="rounded-lg border p-4">
-          <h2 className="mb-2 font-medium">API Status</h2>
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-            />
-            <span className="text-sm text-muted-foreground">
-              {healthCheck.isLoading
-                ? "Checking..."
-                : healthCheck.data
-                  ? "Connected"
-                  : "Disconnected"}
-            </span>
-          </div>
-        </section>
-      </div>
+    <div className="mx-auto max-w-3xl space-y-12">
+      <section className="space-y-4">
+        <h1 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+          Title paperwork, checked and chased until it clears.
+        </h1>
+        <p className="max-w-2xl text-base text-muted-foreground">
+          ExactClerk checks each Deal's Title Packet against the state's rules, files it, and chases
+          any Rejection for independent used-car Dealers. Launching in Texas.
+        </p>
+        <Link href="/login" className={buttonVariants({ size: "lg" })}>
+          Sign in
+        </Link>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        {steps.map(({ title, description }) => (
+          <Card key={title}>
+            <CardHeader>
+              <CardTitle>{title}</CardTitle>
+              <CardDescription>{description}</CardDescription>
+            </CardHeader>
+          </Card>
+        ))}
+      </section>
     </div>
   );
 }

@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "exactclerk",
-  description: "exactclerk",
+  title: { default: "ExactClerk", template: "%s · ExactClerk" },
+  description:
+    "Title paperwork for independent used-car dealers: checked against the state's rules, filed, and chased until the title clears.",
 };
 
 export default function RootLayout({
@@ -29,9 +30,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          <div className="grid grid-rows-[auto_1fr] h-svh">
+          <div className="flex min-h-svh flex-col">
             <Header />
-            {children}
+            <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
           </div>
         </Providers>
       </body>

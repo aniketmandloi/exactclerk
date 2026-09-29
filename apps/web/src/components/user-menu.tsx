@@ -1,4 +1,4 @@
-import { Button } from "@exactclerk/ui/components/button";
+import { Button, buttonVariants } from "@exactclerk/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +24,8 @@ export default function UserMenu() {
 
   if (!session) {
     return (
-      <Link href="/login">
-        <Button variant="outline">Sign In</Button>
+      <Link href="/login" className={buttonVariants({ variant: "outline" })}>
+        Sign in
       </Link>
     );
   }
@@ -33,13 +33,12 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {session.user.name}
+        {session.user.name || session.user.email}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-card">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel>{session.user.email}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {
@@ -52,7 +51,7 @@ export default function UserMenu() {
               });
             }}
           >
-            Sign Out
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

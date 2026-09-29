@@ -5,7 +5,7 @@ A title-paperwork service for small independent used-car dealers: it checks a sa
 ## Language
 
 **Dealer**:
-An independent used-car business that sells vehicles and pays for ExactClerk.
+An independent used-car business that sells vehicles and pays for ExactClerk. User-facing copy says "dealership" where someone names or joins the business.
 _Avoid_: Customer, client, lot
 
 **Buyer**:
