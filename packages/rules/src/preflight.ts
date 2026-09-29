@@ -28,10 +28,9 @@ function isViolated(check: Check, deal: DealRecord): boolean {
   switch (check.op) {
     case "equals":
       return deal.fields[check.field]?.value === check.value;
-    case "confidenceBelow": {
-      const field = deal.fields[check.field];
-      return field !== undefined && field.confidence < check.threshold;
-    }
+    case "confidenceBelow":
+      // A field the reader returned nothing for is unread, so it must not pass as a confident read.
+      return (deal.fields[check.field]?.confidence ?? 0) < check.threshold;
     case "differs": {
       const [a, b] = check.fields.map((name) => deal.fields[name]?.value);
       return a != null && b != null && a !== b;

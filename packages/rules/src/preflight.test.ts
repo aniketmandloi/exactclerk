@@ -109,6 +109,16 @@ describe("runPreflight", () => {
     ]);
   });
 
+  it("asks the Dealer to confirm a field the reader returned no value for", () => {
+    const { odometerReading: _, ...fields } = cleanSale.fields;
+    const result = runPreflight({ ...cleanSale, fields }, ruleset, asOf);
+
+    expect(result.verdict).toBe("waiting_on_you");
+    expect(result.findings.map((f) => [f.ruleId, f.kind])).toEqual([
+      ["odometer-reading", "confirm"],
+    ]);
+  });
+
   it("passes a clean packet to clerk review with no Findings", () => {
     const result = runPreflight(cleanSale, ruleset, asOf);
 
