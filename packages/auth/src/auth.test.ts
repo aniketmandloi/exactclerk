@@ -131,6 +131,40 @@ describe("Dealer accounts", () => {
       }),
     ).rejects.toThrow();
   });
+
+  it("keeps a user to one dealership, so staff cannot make themselves owners of another", async () => {
+    const { owner, dealership } = await openDealership();
+    const invitation = await ctx.auth.api.createInvitation({
+      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership.id },
+      headers: owner,
+    });
+    const staff = await ctx.signIn("sam@dealer.test");
+    await ctx.auth.api.acceptInvitation({ body: { invitationId: invitation.id }, headers: staff });
+
+    await expect(
+      ctx.auth.api.createOrganization({ body: { name: "Mine", slug: "mine" }, headers: staff }),
+    ).rejects.toThrow();
+    await expect(
+      ctx.auth.api.createOrganization({ body: { name: "Second", slug: "second" }, headers: owner }),
+    ).rejects.toThrow();
+  });
+
+  it("keeps the billing endpoints to the owner", async () => {
+    const { owner, dealership } = await openDealership();
+    const invitation = await ctx.auth.api.createInvitation({
+      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership.id },
+      headers: owner,
+    });
+    const staff = await ctx.signIn("sam@dealer.test");
+    await ctx.auth.api.acceptInvitation({ body: { invitationId: invitation.id }, headers: staff });
+
+    await expect(ctx.auth.api.state({ headers: staff })).rejects.toMatchObject({
+      status: "FORBIDDEN",
+    });
+    await expect(ctx.auth.api.portal({ headers: staff })).rejects.toMatchObject({
+      status: "FORBIDDEN",
+    });
+  });
 });
 
 describe("who is acting", () => {

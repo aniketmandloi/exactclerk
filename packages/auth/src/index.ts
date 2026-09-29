@@ -4,9 +4,11 @@ import type { Database } from "@exactclerk/db";
 import * as schema from "@exactclerk/db/schema/auth";
 import { polar, checkout, portal } from "@polar-sh/better-auth";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { emailOTP, organization } from "better-auth/plugins";
 
-import { ac, dealerRoles } from "./access";
+import { ac, can, dealerRoles } from "./access";
+import { isDealerRole } from "./actor";
 import { createPolarClient } from "./lib/payments";
 import type { Mailer } from "./mailer";
 
@@ -17,6 +19,9 @@ export type AuthConfig = {
   POLAR_ACCESS_TOKEN: string;
   POLAR_SUCCESS_URL: string;
 };
+
+// Polar's checkout, customer and usage endpoints; its webhook endpoint is not a user's to call.
+const BILLING_PATHS = ["/checkout", "/customer/", "/usage/"];
 
 export function createAuth(
   env: AuthConfig,
@@ -41,6 +46,25 @@ export function createAuth(
       additionalFields: {
         staffRole: { type: "string", required: false, input: false },
       },
+    },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (!BILLING_PATHS.some((path) => ctx.path.startsWith(path))) return;
+        const session = await getSessionFromCtx(ctx);
+        const member = session
+          ? await database.query.member.findFirst({ where: { userId: session.user.id } })
+          : undefined;
+        const mayUseBilling =
+          member !== undefined &&
+          isDealerRole(member.role) &&
+          can(
+            { kind: "dealer", userId: member.userId, dealerId: member.organizationId, role: member.role },
+            { billing: ["read"] },
+          );
+        if (!mayUseBilling) {
+          throw new APIError("FORBIDDEN", { message: "Billing is for a Dealer's owner" });
+        }
+      }),
     },
     databaseHooks: {
       session: {
@@ -68,6 +92,11 @@ export function createAuth(
       organization({
         ac,
         roles: dealerRoles,
+        // A user belongs to one Dealer in v1, so nobody who already has one can start another.
+        async allowUserToCreateOrganization(user) {
+          const membership = await database.query.member.findFirst({ where: { userId: user.id } });
+          return membership === undefined;
+        },
         async sendInvitationEmail({ email, id, organization, inviter }) {
           await mailer.send({
             to: email,
