@@ -24,14 +24,24 @@ async function setup() {
   async function signIn(email: string) {
     await auth.api.sendVerificationOTP({ body: { email, type: "sign-in" } });
     const code = outbox.findLast((mail) => mail.to === email)?.text.match(/\b\d{6}\b/)?.[0];
+    if (!code) throw new Error(`no sign-in code was emailed to ${email}`);
     const { headers } = await auth.api.signInEmailOTP({
-      body: { email, otp: code! },
+      body: { email, otp: code },
       returnHeaders: true,
     });
     return new Headers({ cookie: headers.getSetCookie().join("; ") });
   }
 
-  return { auth, db, outbox, signIn };
+  async function createDealership(owner: Headers) {
+    const dealership = await auth.api.createOrganization({
+      body: { name: "Lone Star Autos", slug: "lone-star-autos" },
+      headers: owner,
+    });
+    if (!dealership) throw new Error("the dealership was not created");
+    return dealership;
+  }
+
+  return { auth, db, outbox, signIn, createDealership };
 }
 
 describe("email one-time-code sign-in", () => {
@@ -48,11 +58,11 @@ describe("email one-time-code sign-in", () => {
 
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.to).toBe("owner@dealer.test");
-    const code = outbox[0]?.text.match(/\b\d{6}\b/)?.[0];
-    expect(code).toBeDefined();
+    const code = outbox[0]?.text.match(/\b\d{6}\b/)?.[0] ?? "";
+    expect(code).toMatch(/^\d{6}$/);
 
     const { headers } = await auth.api.signInEmailOTP({
-      body: { email: "owner@dealer.test", otp: code! },
+      body: { email: "owner@dealer.test", otp: code },
       returnHeaders: true,
     });
     const session = await auth.api.getSession({
@@ -84,10 +94,7 @@ describe("Dealer accounts", () => {
 
   async function openDealership() {
     const owner = await ctx.signIn("owner@dealer.test");
-    const dealership = await ctx.auth.api.createOrganization({
-      body: { name: "Lone Star Autos", slug: "lone-star-autos" },
-      headers: owner,
-    });
+    const dealership = await ctx.createDealership(owner);
     return { owner, dealership };
   }
 
@@ -95,7 +102,7 @@ describe("Dealer accounts", () => {
     const { owner, dealership } = await openDealership();
 
     const invitation = await ctx.auth.api.createInvitation({
-      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership!.id },
+      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership.id },
       headers: owner,
     });
     expect(ctx.outbox.at(-1)?.to).toBe("sam@dealer.test");
@@ -104,14 +111,14 @@ describe("Dealer accounts", () => {
     await ctx.auth.api.acceptInvitation({ body: { invitationId: invitation.id }, headers: staff });
     const member = await ctx.auth.api.getActiveMember({ headers: staff });
 
-    expect(member?.organizationId).toBe(dealership!.id);
+    expect(member?.organizationId).toBe(dealership.id);
     expect(member?.role).toBe("staff");
   });
 
   it("does not let staff invite anyone", async () => {
     const { owner, dealership } = await openDealership();
     const invitation = await ctx.auth.api.createInvitation({
-      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership!.id },
+      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership.id },
       headers: owner,
     });
     const staff = await ctx.signIn("sam@dealer.test");
@@ -119,7 +126,7 @@ describe("Dealer accounts", () => {
 
     await expect(
       ctx.auth.api.createInvitation({
-        body: { email: "other@dealer.test", role: "staff", organizationId: dealership!.id },
+        body: { email: "other@dealer.test", role: "staff", organizationId: dealership.id },
         headers: staff,
       }),
     ).rejects.toThrow();
@@ -135,12 +142,9 @@ describe("who is acting", () => {
 
   async function dealershipWithStaff() {
     const owner = await ctx.signIn("owner@dealer.test");
-    const dealership = await ctx.auth.api.createOrganization({
-      body: { name: "Lone Star Autos", slug: "lone-star-autos" },
-      headers: owner,
-    });
+    const dealership = await ctx.createDealership(owner);
     const invitation = await ctx.auth.api.createInvitation({
-      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership!.id },
+      body: { email: "sam@dealer.test", role: "staff", organizationId: dealership.id },
       headers: owner,
     });
     const firstStaffSession = await ctx.signIn("sam@dealer.test");
@@ -148,7 +152,7 @@ describe("who is acting", () => {
       body: { invitationId: invitation.id },
       headers: firstStaffSession,
     });
-    return { owner, dealerId: dealership!.id };
+    return { owner, dealerId: dealership.id };
   }
 
   it("knows nobody who is not signed in", async () => {

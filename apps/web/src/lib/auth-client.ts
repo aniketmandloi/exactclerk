@@ -1,5 +1,7 @@
+import { ac, dealerRoles } from "@exactclerk/auth/access";
 import { polarClient } from "@polar-sh/better-auth/client";
 import { createAuthClient } from "better-auth/react";
+import { emailOTPClient, organizationClient } from "better-auth/client/plugins";
 
 function getServerUrl(url: string) {
   const processEnv = (
@@ -37,5 +39,5 @@ function getServerUrl(url: string) {
 
 export const authClient = createAuthClient({
   baseURL: new URL("/api/auth", getServerUrl(process.env.NEXT_PUBLIC_SERVER_URL!)).toString(),
-  plugins: [polarClient()],
+  plugins: [polarClient(), emailOTPClient(), organizationClient({ ac, roles: dealerRoles })],
 });

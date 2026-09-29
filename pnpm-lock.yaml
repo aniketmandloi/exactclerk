@@ -379,6 +379,9 @@ importers:
       '@exactclerk/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@exactclerk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@exactclerk/ui':
         specifier: workspace:*
         version: link:../../packages/ui
