@@ -19,27 +19,43 @@ const checkSchema = z.discriminatedUnion("op", [
 
 export type Check = z.infer<typeof checkSchema>;
 
-const ruleSchema = z.object({
-	id: z.string().min(1),
-	text: z.string().min(1),
-	citation: z.string().min(1),
-	appliesTo: z.object({
-		dealKind: z.enum(["retail_sale", "trade_in"]).optional(),
-		lienPresent: z.boolean().optional(),
-	}),
-	violatedWhen: checkSchema,
-	kind: z.enum(["defect", "confirm", "advisory"]),
-	document: z.string().min(1),
-	whoActs: z.string().min(1),
-	action: z.string().min(1),
-	effectiveFrom: z.iso.date(),
-	effectiveTo: z.iso.date().optional(),
-});
+const ruleSchema = z
+	.strictObject({
+		id: z.string().min(1),
+		text: z.string().min(1),
+		citation: z.string().min(1),
+		appliesTo: z.strictObject({
+			dealKind: z.enum(["retail_sale", "trade_in"]).optional(),
+			lienPresent: z.boolean().optional(),
+		}),
+		violatedWhen: checkSchema,
+		kind: z.enum(["defect", "confirm", "advisory"]),
+		document: z.string().min(1),
+		whoActs: z.string().min(1),
+		action: z.string().min(1),
+		effectiveFrom: z.iso.date(),
+		effectiveTo: z.iso.date().optional(),
+	})
+	.refine(
+		(rule) =>
+			rule.effectiveTo === undefined || rule.effectiveTo >= rule.effectiveFrom,
+		{
+			message: "effectiveTo must not be before effectiveFrom",
+		},
+	);
 
-const rulesetSchema = z.object({
-	version: z.string().min(1),
-	rules: z.array(ruleSchema),
-});
+const rulesetSchema = z
+	.strictObject({
+		version: z.string().min(1),
+		rules: z.array(ruleSchema),
+	})
+	.refine(
+		(ruleset) =>
+			new Set(ruleset.rules.map((r) => r.id)).size === ruleset.rules.length,
+		{
+			message: "Rule ids must be unique",
+		},
+	);
 
 export type Rule = z.infer<typeof ruleSchema>;
 export type Ruleset = z.infer<typeof rulesetSchema>;

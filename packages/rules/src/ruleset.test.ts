@@ -34,4 +34,30 @@ describe("parseRuleset", () => {
 			parseRuleset({ version: "tx-1", rules: [{ ...rule, citation: "" }] }),
 		).toThrow();
 	});
+
+	it("rejects a Rule whose applicability has an unknown key instead of applying it to every Deal", () => {
+		expect(() =>
+			parseRuleset({
+				version: "tx-1",
+				rules: [{ ...rule, appliesTo: { lien_present: true } }],
+			}),
+		).toThrow();
+	});
+
+	it("rejects two Rules with the same id", () => {
+		expect(() =>
+			parseRuleset({ version: "tx-1", rules: [rule, rule] }),
+		).toThrow();
+	});
+
+	it("rejects a Rule that stops being effective before it starts", () => {
+		expect(() =>
+			parseRuleset({
+				version: "tx-1",
+				rules: [
+					{ ...rule, effectiveFrom: "2026-01-01", effectiveTo: "2025-12-31" },
+				],
+			}),
+		).toThrow();
+	});
 });
