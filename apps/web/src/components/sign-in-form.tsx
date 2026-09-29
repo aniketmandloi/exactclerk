@@ -1,7 +1,15 @@
 import { Button } from "@exactclerk/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@exactclerk/ui/components/card";
 import { Input } from "@exactclerk/ui/components/input";
 import { Label } from "@exactclerk/ui/components/label";
 import { useForm } from "@tanstack/react-form";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -40,7 +48,7 @@ export default function SignInForm({ next }: { next: string }) {
         { email: value.email, otp: value.code },
         {
           onSuccess: () => {
-            router.push(next);
+            router.push(next as Route);
             toast.success("Sign in successful");
           },
           onError: (error) => {
@@ -62,18 +70,24 @@ export default function SignInForm({ next }: { next: string }) {
   }
 
   return (
-    <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Sign in</h1>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
-      >
-        <div>
+    <Card className="mx-auto mt-10 w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="text-lg">Sign in</CardTitle>
+        <CardDescription>
+          {codeSent
+            ? "Enter the 6-digit code we emailed you."
+            : "We'll email you a code. No password needed."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="space-y-4"
+        >
           <form.Field name="email">
             {(field) => (
               <div className="space-y-2">
@@ -82,23 +96,26 @@ export default function SignInForm({ next }: { next: string }) {
                   id={field.name}
                   name={field.name}
                   type="email"
+                  autoComplete="email"
                   disabled={codeSent}
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  aria-describedby={`${field.name}-error`}
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
+                <div id={`${field.name}-error`} role="alert">
+                  {field.state.meta.errors.map((error) => (
+                    <p key={error?.message} className="text-destructive">
+                      {error?.message}
+                    </p>
+                  ))}
+                </div>
               </div>
             )}
           </form.Field>
-        </div>
 
-        {codeSent && (
-          <div>
+          {codeSent && (
             <form.Field name="code">
               {(field) => (
                 <div className="space-y-2">
@@ -107,32 +124,61 @@ export default function SignInForm({ next }: { next: string }) {
                     id={field.name}
                     name={field.name}
                     inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
                     autoComplete="one-time-code"
+                    aria-invalid={field.state.meta.errors.length > 0}
+                    aria-describedby={`${field.name}-error`}
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
-                  {field.state.meta.errors.map((error) => (
-                    <p key={error?.message} className="text-red-500">
-                      {error?.message}
-                    </p>
-                  ))}
+                  <div id={`${field.name}-error`} role="alert">
+                    {field.state.meta.errors.map((error) => (
+                      <p key={error?.message} className="text-destructive">
+                        {error?.message}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               )}
             </form.Field>
-          </div>
-        )}
+          )}
 
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-        >
-          {({ canSubmit, isSubmitting }) => (
-            <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Submitting..." : codeSent ? "Sign in" : "Email me a code"}
+          <form.Subscribe
+            selector={(state) => ({
+              canSubmit: state.canSubmit,
+              isSubmitting: state.isSubmitting,
+            })}
+          >
+            {({ canSubmit, isSubmitting }) => (
+              <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting
+                  ? codeSent
+                    ? "Signing in…"
+                    : "Sending code…"
+                  : codeSent
+                    ? "Sign in"
+                    : "Email me a code"}
+              </Button>
+            )}
+          </form.Subscribe>
+
+          {codeSent && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setCodeSent(false);
+                form.setFieldValue("code", "");
+              }}
+            >
+              Use a different email
             </Button>
           )}
-        </form.Subscribe>
-      </form>
-    </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
