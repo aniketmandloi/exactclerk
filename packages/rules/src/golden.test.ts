@@ -97,4 +97,49 @@ describe("runGoldenSet", () => {
 			"clean-but-noisy: unexpected confirm odometer",
 		]);
 	});
+
+	it("fails a case whose expected Confirm is no longer raised", () => {
+		const withConfirm: GoldenCase[] = [
+			{
+				name: "blurry",
+				deal: deal({ signed: true, odometerRead: false }),
+				expected: [{ ruleId: "odometer", kind: "confirm" }],
+			},
+		];
+		const blind = parseRuleset({
+			version: "tx-2",
+			rules: [rule("signature", "signed", "defect")],
+		});
+
+		expect(runGoldenSet(withConfirm, ruleset, asOf).failures).toEqual([]);
+		expect(runGoldenSet(withConfirm, blind, asOf).failures).toEqual([
+			"blurry: missed confirm odometer",
+		]);
+	});
+
+	it("fails a case whose Defect Rule was downgraded so it no longer blocks", () => {
+		const downgraded = parseRuleset({
+			version: "tx-2",
+			rules: [{ ...rule("signature", "signed", "defect"), kind: "advisory" }],
+		});
+
+		const report = runGoldenSet(cases, downgraded, asOf);
+
+		expect(report.defectRecall).toBe(0);
+		expect(report.failures).toEqual(["unsigned: missed defect signature"]);
+	});
+
+	it("fails a case that draws a blocking Finding nobody expected", () => {
+		const surprising: GoldenCase[] = [
+			{
+				name: "unsigned-and-unread",
+				deal: deal({ signed: false, odometerRead: false }),
+				expected: [{ ruleId: "signature", kind: "defect" }],
+			},
+		];
+
+		expect(runGoldenSet(surprising, ruleset, asOf).failures).toEqual([
+			"unsigned-and-unread: unexpected confirm odometer",
+		]);
+	});
 });

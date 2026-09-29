@@ -33,27 +33,40 @@ export function runGoldenSet(
 
 	for (const goldenCase of cases) {
 		const { findings } = runPreflight(goldenCase.deal, ruleset, asOf);
+		const raised = (ruleId: string, kind: Finding["kind"]) =>
+			findings.some((f) => f.ruleId === ruleId && f.kind === kind);
 
 		for (const expected of goldenCase.expected) {
-			if (expected.kind !== "defect") continue;
-			const found = findings.some((f) => f.ruleId === expected.ruleId);
-			defects++;
-			if (found) defectsFound++;
-			else
-				failures.push(`${goldenCase.name}: missed defect ${expected.ruleId}`);
+			const found = raised(expected.ruleId, expected.kind);
+			if (!found) {
+				failures.push(
+					`${goldenCase.name}: missed ${expected.kind} ${expected.ruleId}`,
+				);
+			}
+			if (expected.kind === "defect") {
+				defects++;
+				if (found) defectsFound++;
+			}
 			if (expected.hardReject) {
 				hardRejects++;
 				if (found) hardRejectsFound++;
 			}
 		}
 
+		const unexpected = findings.filter(
+			(f) =>
+				f.kind !== "advisory" &&
+				!goldenCase.expected.some(
+					(e) => e.ruleId === f.ruleId && e.kind === f.kind,
+				),
+		);
+		for (const f of unexpected) {
+			failures.push(`${goldenCase.name}: unexpected ${f.kind} ${f.ruleId}`);
+		}
+
 		if (goldenCase.expected.length === 0) {
 			cleanCases++;
-			const blocking = findings.filter((f) => f.kind !== "advisory");
-			if (blocking.length > 0) noisyCleanCases++;
-			for (const f of blocking) {
-				failures.push(`${goldenCase.name}: unexpected ${f.kind} ${f.ruleId}`);
-			}
+			if (unexpected.length > 0) noisyCleanCases++;
 		}
 	}
 
