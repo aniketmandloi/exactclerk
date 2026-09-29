@@ -10,9 +10,9 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <Card className="mx-auto mt-10 w-full max-w-md">
+    <Card className="mx-auto mt-6 w-full max-w-md sm:mt-12">
       <CardHeader>
-        <CardTitle className="text-lg">Page not found</CardTitle>
+        <CardTitle className="font-bold text-2xl [font-stretch:125%]">Page not found</CardTitle>
         <CardDescription>That page doesn't exist or has moved.</CardDescription>
       </CardHeader>
       <CardContent>

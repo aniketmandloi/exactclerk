@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import Guilloche from "@/components/guilloche";
 import { authClient } from "@/lib/auth-client";
 
 export default function AcceptInvitationPage() {
@@ -21,13 +22,14 @@ export default function AcceptInvitationPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (isPending) return <Skeleton className="mx-auto mt-10 h-40 w-full max-w-md" />;
+  if (isPending) return <Skeleton className="mx-auto mt-6 h-56 w-full max-w-md sm:mt-12" />;
 
   if (!session) {
     return (
-      <Card className="mx-auto mt-10 w-full max-w-md">
+      <Card className="mx-auto mt-6 w-full max-w-md pt-0 sm:mt-12">
+        <Guilloche className="text-primary/40" />
         <CardHeader>
-          <CardTitle className="text-lg">You're invited</CardTitle>
+          <CardTitle className="font-bold text-2xl [font-stretch:125%]">You're invited</CardTitle>
           <CardDescription>
             Sign in with the email address you were invited on to join your dealership.
           </CardDescription>
@@ -45,14 +47,17 @@ export default function AcceptInvitationPage() {
   }
 
   return (
-    <Card className="mx-auto mt-10 w-full max-w-md">
+    <Card className="mx-auto mt-6 w-full max-w-md pt-0 sm:mt-12">
+      <Guilloche className="text-primary/40" />
       <CardHeader>
-        <CardTitle className="text-lg">Join the dealership</CardTitle>
+        <CardTitle className="font-bold text-2xl [font-stretch:125%]">
+          Join the dealership
+        </CardTitle>
         <CardDescription>You'll join as {session.user.email}.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
-          <p role="alert" className="text-destructive">
+          <p role="alert" className="text-destructive text-sm">
             {error}
           </p>
         )}
