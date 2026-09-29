@@ -4,8 +4,9 @@ import type { Database } from "@exactclerk/db";
 import * as schema from "@exactclerk/db/schema/auth";
 import { polar, checkout, portal } from "@polar-sh/better-auth";
 import { betterAuth } from "better-auth";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, organization } from "better-auth/plugins";
 
+import { ac, dealerRoles } from "./access";
 import { createPolarClient } from "./lib/payments";
 import type { Mailer } from "./mailer";
 
@@ -36,6 +37,24 @@ export function createAuth(
       "http://localhost:8081",
     ],
     emailAndPassword: { enabled: false },
+    user: {
+      additionalFields: {
+        staffRole: { type: "string", required: false, input: false },
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // A user belongs to one Dealer in v1, so every new session starts inside it.
+          async before(session) {
+            const membership = await database.query.member.findFirst({
+              where: { userId: session.userId },
+            });
+            return { data: { ...session, activeOrganizationId: membership?.organizationId } };
+          },
+        },
+      },
+    },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
@@ -46,6 +65,17 @@ export function createAuth(
       },
     },
     plugins: [
+      organization({
+        ac,
+        roles: dealerRoles,
+        async sendInvitationEmail({ email, id, organization, inviter }) {
+          await mailer.send({
+            to: email,
+            subject: `${inviter.user.name || inviter.user.email} invited you to ${organization.name} on ExactClerk`,
+            text: `Accept the invitation: ${env.CORS_ORIGIN}/accept-invitation/${id}`,
+          });
+        },
+      }),
       emailOTP({
         async sendVerificationOTP({ email, otp }) {
           await mailer.send({

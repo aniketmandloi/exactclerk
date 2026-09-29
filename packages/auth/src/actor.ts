@@ -1,5 +1,6 @@
 export type DealerRole = "owner" | "staff";
-export type ExactClerkRole = "clerk" | "lead_clerk" | "admin";
+export const EXACTCLERK_ROLES = ["clerk", "lead_clerk", "admin"] as const;
+export type ExactClerkRole = (typeof EXACTCLERK_ROLES)[number];
 
 export type Actor =
   | { kind: "dealer"; userId: string; dealerId: string; role: DealerRole }
