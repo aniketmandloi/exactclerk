@@ -1,9 +1,25 @@
 import type { Actor } from "@exactclerk/auth/actor";
 import type { Database } from "@exactclerk/db";
-import { deal } from "@exactclerk/db/schema";
-import { and, eq, type SQL } from "drizzle-orm";
+import {
+  type DealEventType,
+  type DealKind,
+  type DealStatus,
+  deal,
+  dealEvent,
+} from "@exactclerk/db/schema";
+import { and, asc, eq, type SQL, sql } from "drizzle-orm";
+import type { WithSubqueryWithSelection } from "drizzle-orm/pg-core";
 
 type DealerActor = Extract<Actor, { kind: "dealer" }>;
+
+type DealEventInput = {
+  type: DealEventType;
+  fromStatus?: DealStatus;
+  toStatus?: DealStatus;
+  data?: Record<string, unknown>;
+};
+
+type ChangedDeal = WithSubqueryWithSelection<{ id: typeof deal.id }, "changed">;
 
 function requireDealer(actor: Actor): DealerActor {
   if (actor.kind !== "dealer") throw new Error("Only a Dealer can do this");
@@ -17,13 +33,53 @@ function visibleTo(actor: Actor): SQL | undefined {
 }
 
 export function dealRepository(db: Database, actor: Actor) {
+  // Neon over HTTP has no interactive transactions, so a change to a Deal and its event are
+  // written as one statement: the change is a CTE and the event is inserted from its rows.
+  async function recordChange(changed: ChangedDeal, event: DealEventInput) {
+    const [recorded] = await db
+      .with(changed)
+      .insert(dealEvent)
+      .select(
+        db
+          .select({
+            id: sql`${crypto.randomUUID()}`.as("id"),
+            dealId: changed.id,
+            actorUserId: sql`${actor.userId}`.as("actor_user_id"),
+            actorRole: sql`${actor.role}`.as("actor_role"),
+            type: sql`${event.type}`.as("type"),
+            fromStatus: sql`${event.fromStatus ?? null}`.as("from_status"),
+            toStatus: sql`${event.toStatus ?? null}`.as("to_status"),
+            data: sql`${event.data ? JSON.stringify(event.data) : null}::jsonb`.as("data"),
+            createdAt: sql`now()`.as("created_at"),
+          })
+          .from(changed),
+      )
+      .returning({ dealId: dealEvent.dealId });
+    if (!recorded) throw new Error("The Deal changed meanwhile; try again");
+  }
+
+  async function get(id: string) {
+    const [found] = await db
+      .select()
+      .from(deal)
+      .where(and(eq(deal.id, id), visibleTo(actor)));
+    return found ?? null;
+  }
+
   return {
-    async create(input: { vin: string }) {
+    async create(input: { vin: string; kind: DealKind }) {
       const { dealerId } = requireDealer(actor);
-      const [created] = await db
-        .insert(deal)
-        .values({ id: crypto.randomUUID(), dealerId, vin: input.vin })
-        .returning();
+      const id = crypto.randomUUID();
+      await recordChange(
+        db.$with("changed").as(
+          db
+            .insert(deal)
+            .values({ id, dealerId, ...input })
+            .returning({ id: deal.id }),
+        ),
+        { type: "opened", toStatus: "draft", data: input },
+      );
+      const created = await get(id);
       if (!created) throw new Error("The Deal was not created");
       return created;
     },
@@ -32,13 +88,7 @@ export function dealRepository(db: Database, actor: Actor) {
       return db.select().from(deal).where(visibleTo(actor));
     },
 
-    async get(id: string) {
-      const [found] = await db
-        .select()
-        .from(deal)
-        .where(and(eq(deal.id, id), visibleTo(actor)));
-      return found ?? null;
-    },
+    get,
 
     async update(id: string, changes: { vin: string }) {
       requireDealer(actor);
@@ -48,6 +98,15 @@ export function dealRepository(db: Database, actor: Actor) {
         .where(and(eq(deal.id, id), visibleTo(actor)))
         .returning();
       return updated ?? null;
+    },
+
+    async events(id: string) {
+      if (!(await get(id))) return [];
+      return db
+        .select()
+        .from(dealEvent)
+        .where(eq(dealEvent.dealId, id))
+        .orderBy(asc(dealEvent.createdAt));
     },
 
     async assignClerk(id: string, clerkId: string) {
