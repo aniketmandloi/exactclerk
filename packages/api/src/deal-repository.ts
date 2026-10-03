@@ -10,7 +10,11 @@ import {
 import { and, asc, eq, type SQL, sql } from "drizzle-orm";
 import type { WithSubqueryWithSelection } from "drizzle-orm/pg-core";
 
+import { type IntakeFacts, priceTier, TIER_PRICE_CENTS } from "./deal-lifecycle";
+
 type DealerActor = Extract<Actor, { kind: "dealer" }>;
+
+export type Intake = { vin: string; kind: DealKind } & IntakeFacts;
 
 type DealEventInput = {
   type: DealEventType;
@@ -31,6 +35,19 @@ function visibleTo(actor: Actor): SQL | undefined {
   if (actor.role === "clerk") return eq(deal.assignedClerkId, actor.userId);
   return undefined;
 }
+
+function priced(row: typeof deal.$inferSelect) {
+  const tier = priceTier(row);
+  return { ...row, tier, priceCents: TIER_PRICE_CENTS[tier] };
+}
+
+const noFacts: IntakeFacts = {
+  outOfStateTitle: false,
+  salvage: false,
+  bonded: false,
+  powerOfAttorney: false,
+  lienPresent: false,
+};
 
 export function dealRepository(db: Database, actor: Actor) {
   // Neon over HTTP has no interactive transactions, so a change to a Deal and its event are
@@ -58,46 +75,68 @@ export function dealRepository(db: Database, actor: Actor) {
     if (!recorded) throw new Error("The Deal changed meanwhile; try again");
   }
 
+  function changeDraft(id: string, changes: Partial<typeof deal.$inferInsert>) {
+    return db.$with("changed").as(
+      db
+        .update(deal)
+        .set(changes)
+        .where(and(eq(deal.id, id), visibleTo(actor), eq(deal.status, "draft")))
+        .returning({ id: deal.id }),
+    );
+  }
+
   async function get(id: string) {
     const [found] = await db
       .select()
       .from(deal)
       .where(and(eq(deal.id, id), visibleTo(actor)));
-    return found ?? null;
+    return found ? priced(found) : null;
+  }
+
+  async function getDraft(id: string) {
+    const found = await get(id);
+    if (found && found.status !== "draft") {
+      throw new Error("Only a Draft's intake and price can change");
+    }
+    return found;
   }
 
   return {
-    async create(input: { vin: string; kind: DealKind }) {
+    async create(input: { vin: string; kind: DealKind } & Partial<IntakeFacts>) {
       const { dealerId } = requireDealer(actor);
       const id = crypto.randomUUID();
+      const intake: Intake = { ...noFacts, ...input };
       await recordChange(
         db.$with("changed").as(
           db
             .insert(deal)
-            .values({ id, dealerId, ...input })
+            .values({ id, dealerId, ...intake })
             .returning({ id: deal.id }),
         ),
-        { type: "opened", toStatus: "draft", data: input },
+        { type: "opened", toStatus: "draft", data: { ...intake, tier: priceTier(intake) } },
       );
       const created = await get(id);
       if (!created) throw new Error("The Deal was not created");
       return created;
     },
 
-    list() {
-      return db.select().from(deal).where(visibleTo(actor));
+    async list() {
+      const rows = await db.select().from(deal).where(visibleTo(actor));
+      return rows.map(priced);
     },
 
     get,
 
-    async update(id: string, changes: { vin: string }) {
+    async update(id: string, changes: Partial<Intake>) {
       requireDealer(actor);
-      const [updated] = await db
-        .update(deal)
-        .set(changes)
-        .where(and(eq(deal.id, id), visibleTo(actor)))
-        .returning();
-      return updated ?? null;
+      const current = await getDraft(id);
+      if (!current) return null;
+      const tier = priceTier({ ...current, ...changes });
+      await recordChange(changeDraft(id, changes), {
+        type: "intake_updated",
+        data: { ...changes, tier },
+      });
+      return get(id);
     },
 
     async events(id: string) {

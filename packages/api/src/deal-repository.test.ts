@@ -116,6 +116,42 @@ describe("opening a Deal", () => {
     ]);
   });
 
+  it.each([
+    [{}, "standard", 4900],
+    [{ lienPresent: true }, "lien", 7900],
+    [{ outOfStateTitle: true }, "complex", 9900],
+    [{ salvage: true }, "complex", 9900],
+    [{ bonded: true }, "complex", 9900],
+    [{ powerOfAttorney: true }, "complex", 9900],
+    [{ lienPresent: true, salvage: true }, "complex", 9900],
+  ])("prices a Deal with intake facts %o as %s", async (facts, tier, priceCents) => {
+    const opened = await dealRepository(db, ownerA).create({
+      vin: "VIN-A",
+      kind: "retail_sale",
+      ...facts,
+    });
+
+    expect(opened).toMatchObject({ tier, priceCents });
+  });
+
+  it("returns to a Draft, changes its intake and re-prices it", async () => {
+    const repo = dealRepository(db, staffB);
+    const opened = await repo.create({ vin: "VIN-B", kind: "retail_sale" });
+
+    await repo.update(opened.id, { lienPresent: true });
+
+    expect(await repo.get(opened.id)).toMatchObject({
+      status: "draft",
+      lienPresent: true,
+      tier: "lien",
+      priceCents: 7900,
+    });
+    expect(await repo.events(opened.id)).toMatchObject([
+      { type: "opened" },
+      { type: "intake_updated", actorUserId: "user-b2", actorRole: "staff" },
+    ]);
+  });
+
   it("never lets the event log be rewritten", async () => {
     const opened = await dealRepository(db, ownerA).create({ vin: "VIN-A", kind: "retail_sale" });
     const appendOnly = { cause: { message: expect.stringMatching(/append-only/) } };
