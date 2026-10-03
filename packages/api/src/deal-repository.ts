@@ -8,7 +8,7 @@ import {
   dealEvent,
   type PriceTier,
 } from "@exactclerk/db/schema";
-import { and, asc, eq, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, type SQL, sql } from "drizzle-orm";
 import type { WithSubqueryWithSelection } from "drizzle-orm/pg-core";
 
 import { assertCanMove, type IntakeFacts, priceTier, TIER_PRICE_CENTS } from "./deal-lifecycle";
@@ -139,7 +139,11 @@ export function dealRepository(db: Database, actor: Actor) {
     },
 
     async list() {
-      const rows = await db.select().from(deal).where(visibleTo(actor));
+      const rows = await db
+        .select()
+        .from(deal)
+        .where(visibleTo(actor))
+        .orderBy(desc(deal.createdAt));
       return rows.map(priced);
     },
 

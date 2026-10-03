@@ -116,6 +116,14 @@ describe("opening a Deal", () => {
     ]);
   });
 
+  it("lists the newest Deal first, so a Draft is easy to return to", async () => {
+    const repo = dealRepository(db, ownerA);
+    const older = await repo.create({ vin: "VIN-1", kind: "retail_sale" });
+    const newer = await repo.create({ vin: "VIN-2", kind: "trade_in" });
+
+    expect((await repo.list()).map((d) => d.id)).toEqual([newer.id, older.id]);
+  });
+
   it.each([
     [{}, "standard", 4900],
     [{ lienPresent: true }, "lien", 7900],
