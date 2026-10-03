@@ -6,11 +6,12 @@ import {
   type DealStatus,
   deal,
   dealEvent,
+  type PriceTier,
 } from "@exactclerk/db/schema";
 import { and, asc, eq, type SQL, sql } from "drizzle-orm";
 import type { WithSubqueryWithSelection } from "drizzle-orm/pg-core";
 
-import { type IntakeFacts, priceTier, TIER_PRICE_CENTS } from "./deal-lifecycle";
+import { assertCanMove, type IntakeFacts, priceTier, TIER_PRICE_CENTS } from "./deal-lifecycle";
 
 type DealerActor = Extract<Actor, { kind: "dealer" }>;
 
@@ -101,6 +102,23 @@ export function dealRepository(db: Database, actor: Actor) {
     return found;
   }
 
+  async function moveTo(id: string, to: DealStatus) {
+    const current = await get(id);
+    if (!current) return null;
+    assertCanMove(current, to);
+    await recordChange(
+      db.$with("changed").as(
+        db
+          .update(deal)
+          .set({ status: to })
+          .where(and(eq(deal.id, id), visibleTo(actor), eq(deal.status, current.status)))
+          .returning({ id: deal.id }),
+      ),
+      { type: "status_changed", fromStatus: current.status, toStatus: to },
+    );
+    return get(id);
+  }
+
   return {
     async create(input: { vin: string; kind: DealKind } & Partial<IntakeFacts>) {
       const { dealerId } = requireDealer(actor);
@@ -132,11 +150,35 @@ export function dealRepository(db: Database, actor: Actor) {
       const current = await getDraft(id);
       if (!current) return null;
       const tier = priceTier({ ...current, ...changes });
-      await recordChange(changeDraft(id, changes), {
-        type: "intake_updated",
-        data: { ...changes, tier },
+      const approvalCleared = current.approvedTier !== null && current.approvedTier !== tier;
+      await recordChange(
+        changeDraft(
+          id,
+          approvalCleared ? { ...changes, approvedTier: null, approvedPriceCents: null } : changes,
+        ),
+        { type: "intake_updated", data: { ...changes, tier, approvalCleared } },
+      );
+      return get(id);
+    },
+
+    async approvePrice(id: string, tier: PriceTier) {
+      requireDealer(actor);
+      const current = await getDraft(id);
+      if (!current) return null;
+      if (current.tier !== tier) {
+        throw new Error(`This Deal is priced ${current.tier} now, not ${tier}`);
+      }
+      const priceCents = TIER_PRICE_CENTS[tier];
+      await recordChange(changeDraft(id, { approvedTier: tier, approvedPriceCents: priceCents }), {
+        type: "price_approved",
+        data: { tier, priceCents },
       });
       return get(id);
+    },
+
+    async start(id: string) {
+      requireDealer(actor);
+      return moveTo(id, "waiting_on_you");
     },
 
     async events(id: string) {

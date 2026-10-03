@@ -152,6 +152,70 @@ describe("opening a Deal", () => {
     ]);
   });
 
+  it("will not let the Deal move on until the Dealer approves its price", async () => {
+    const repo = dealRepository(db, ownerA);
+    const opened = await repo.create({ vin: "VIN-A", kind: "retail_sale", lienPresent: true });
+
+    await expect(repo.start(opened.id)).rejects.toThrow(/approve/i);
+
+    expect(await repo.approvePrice(opened.id, "lien")).toMatchObject({
+      approvedTier: "lien",
+      approvedPriceCents: 7900,
+    });
+    expect(await repo.start(opened.id)).toMatchObject({ status: "waiting_on_you" });
+    expect(await repo.events(opened.id)).toMatchObject([
+      { type: "opened" },
+      { type: "price_approved", data: { tier: "lien", priceCents: 7900 } },
+      { type: "status_changed", fromStatus: "draft", toStatus: "waiting_on_you" },
+    ]);
+  });
+
+  it("refuses an approval for a price the Deal is no longer at", async () => {
+    const repo = dealRepository(db, ownerA);
+    const opened = await repo.create({ vin: "VIN-A", kind: "retail_sale", bonded: true });
+
+    await expect(repo.approvePrice(opened.id, "standard")).rejects.toThrow();
+    expect((await repo.get(opened.id))?.approvedTier).toBeNull();
+  });
+
+  it("asks for approval again when an intake change moves the Deal to another tier", async () => {
+    const repo = dealRepository(db, ownerA);
+    const opened = await repo.create({ vin: "VIN-A", kind: "retail_sale" });
+    await repo.approvePrice(opened.id, "standard");
+
+    await repo.update(opened.id, { vin: "VIN-A2" });
+    expect((await repo.get(opened.id))?.approvedTier).toBe("standard");
+
+    await repo.update(opened.id, { lienPresent: true });
+    expect((await repo.get(opened.id))?.approvedTier).toBeNull();
+    await expect(repo.start(opened.id)).rejects.toThrow(/approve/i);
+  });
+
+  it("keeps the intake and price fixed once the Deal has left Draft", async () => {
+    const repo = dealRepository(db, ownerA);
+    const opened = await repo.create({ vin: "VIN-A", kind: "retail_sale" });
+    await repo.approvePrice(opened.id, "standard");
+    await repo.start(opened.id);
+
+    await expect(repo.update(opened.id, { lienPresent: true })).rejects.toThrow(/draft/i);
+    await expect(repo.approvePrice(opened.id, "standard")).rejects.toThrow(/draft/i);
+    await expect(repo.start(opened.id)).rejects.toThrow();
+    expect(await repo.get(opened.id)).toMatchObject({ status: "waiting_on_you", tier: "standard" });
+  });
+
+  it("keeps another Dealer and ExactClerk staff from approving, starting or reading its history", async () => {
+    const opened = await dealRepository(db, ownerA).create({ vin: "VIN-A", kind: "retail_sale" });
+
+    expect(await dealRepository(db, ownerB).approvePrice(opened.id, "standard")).toBeNull();
+    expect(await dealRepository(db, ownerB).start(opened.id)).toBeNull();
+    expect(await dealRepository(db, ownerB).events(opened.id)).toEqual([]);
+    await expect(
+      dealRepository(db, leadClerk).approvePrice(opened.id, "standard"),
+    ).rejects.toThrow();
+    await expect(dealRepository(db, leadClerk).start(opened.id)).rejects.toThrow();
+    expect((await dealRepository(db, ownerA).get(opened.id))?.approvedTier).toBeNull();
+  });
+
   it("never lets the event log be rewritten", async () => {
     const opened = await dealRepository(db, ownerA).create({ vin: "VIN-A", kind: "retail_sale" });
     const appendOnly = { cause: { message: expect.stringMatching(/append-only/) } };
