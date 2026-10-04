@@ -23,3 +23,18 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     },
   });
 });
+
+export const actorProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!ctx.actor) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Create or join a dealership first",
+    });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      actor: ctx.actor,
+    },
+  });
+});
