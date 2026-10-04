@@ -199,6 +199,41 @@ describe("opening a Deal", () => {
     await expect(repo.start(opened.id)).rejects.toThrow(/approve/i);
   });
 
+  // The test database runs queries in the order they're sent, so each pair below reads the
+  // Deal before either one writes.
+  it("won't start a Deal whose tier another user changed after it was read", async () => {
+    const owner = dealRepository(db, ownerA);
+    const opened = await owner.create({ vin: "VIN-A", kind: "retail_sale" });
+    await owner.approvePrice(opened.id, "standard");
+    const staff = dealRepository(db, { ...ownerA, userId: "user-a2", role: "staff" });
+
+    const [, started] = await Promise.allSettled([
+      staff.update(opened.id, { lienPresent: true }),
+      owner.start(opened.id),
+    ]);
+
+    expect(started.status).toBe("rejected");
+    expect(await owner.get(opened.id)).toMatchObject({
+      status: "draft",
+      tier: "lien",
+      approvedTier: null,
+    });
+  });
+
+  it("won't approve a price another user changed after it was read", async () => {
+    const owner = dealRepository(db, ownerA);
+    const opened = await owner.create({ vin: "VIN-A", kind: "retail_sale" });
+    const staff = dealRepository(db, { ...ownerA, userId: "user-a2", role: "staff" });
+
+    const [, approved] = await Promise.allSettled([
+      staff.update(opened.id, { lienPresent: true }),
+      owner.approvePrice(opened.id, "standard"),
+    ]);
+
+    expect(approved.status).toBe("rejected");
+    expect(await owner.get(opened.id)).toMatchObject({ tier: "lien", approvedTier: null });
+  });
+
   it("keeps the intake and price fixed once the Deal has left Draft", async () => {
     const repo = dealRepository(db, ownerA);
     const opened = await repo.create({ vin: "VIN-A", kind: "retail_sale" });

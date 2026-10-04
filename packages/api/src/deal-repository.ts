@@ -8,7 +8,7 @@ import {
   dealEvent,
   type PriceTier,
 } from "@exactclerk/db/schema";
-import { and, asc, desc, eq, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { WithSubqueryWithSelection } from "drizzle-orm/pg-core";
 
 import { assertCanMove, type IntakeFacts, priceTier, TIER_PRICE_CENTS } from "./deal-lifecycle";
@@ -24,6 +24,8 @@ type DealEventInput = {
   data?: Record<string, unknown>;
 };
 
+type DealRow = typeof deal.$inferSelect;
+
 type ChangedDeal = WithSubqueryWithSelection<{ id: typeof deal.id }, "changed">;
 
 function requireDealer(actor: Actor): DealerActor {
@@ -37,7 +39,7 @@ function visibleTo(actor: Actor): SQL | undefined {
   return undefined;
 }
 
-function priced(row: typeof deal.$inferSelect) {
+function priced(row: DealRow) {
   const tier = priceTier(row);
   return { ...row, tier, priceCents: TIER_PRICE_CENTS[tier] };
 }
@@ -76,12 +78,28 @@ export function dealRepository(db: Database, actor: Actor) {
     if (!recorded) throw new Error("The Deal changed meanwhile; try again");
   }
 
-  function changeDraft(id: string, changes: Partial<typeof deal.$inferInsert>) {
+  // Every check runs on a Deal read earlier, so the write only lands if what the check relied on
+  // (status, intake facts, approval) is still as read; otherwise recordChange throws.
+  function changeIfUnchanged(read: DealRow, changes: Partial<typeof deal.$inferInsert>) {
     return db.$with("changed").as(
       db
         .update(deal)
         .set(changes)
-        .where(and(eq(deal.id, id), visibleTo(actor), eq(deal.status, "draft")))
+        .where(
+          and(
+            eq(deal.id, read.id),
+            visibleTo(actor),
+            eq(deal.status, read.status),
+            eq(deal.outOfStateTitle, read.outOfStateTitle),
+            eq(deal.salvage, read.salvage),
+            eq(deal.bonded, read.bonded),
+            eq(deal.powerOfAttorney, read.powerOfAttorney),
+            eq(deal.lienPresent, read.lienPresent),
+            read.approvedTier === null
+              ? isNull(deal.approvedTier)
+              : eq(deal.approvedTier, read.approvedTier),
+          ),
+        )
         .returning({ id: deal.id }),
     );
   }
@@ -106,16 +124,11 @@ export function dealRepository(db: Database, actor: Actor) {
     const current = await get(id);
     if (!current) return null;
     assertCanMove(current, to);
-    await recordChange(
-      db.$with("changed").as(
-        db
-          .update(deal)
-          .set({ status: to })
-          .where(and(eq(deal.id, id), visibleTo(actor), eq(deal.status, current.status)))
-          .returning({ id: deal.id }),
-      ),
-      { type: "status_changed", fromStatus: current.status, toStatus: to },
-    );
+    await recordChange(changeIfUnchanged(current, { status: to }), {
+      type: "status_changed",
+      fromStatus: current.status,
+      toStatus: to,
+    });
     return get(id);
   }
 
@@ -156,8 +169,8 @@ export function dealRepository(db: Database, actor: Actor) {
       const tier = priceTier({ ...current, ...changes });
       const approvalCleared = current.approvedTier !== null && current.approvedTier !== tier;
       await recordChange(
-        changeDraft(
-          id,
+        changeIfUnchanged(
+          current,
           approvalCleared ? { ...changes, approvedTier: null, approvedPriceCents: null } : changes,
         ),
         { type: "intake_updated", data: { ...changes, tier, approvalCleared } },
@@ -173,10 +186,10 @@ export function dealRepository(db: Database, actor: Actor) {
         throw new Error(`This Deal is priced ${current.tier} now, not ${tier}`);
       }
       const priceCents = TIER_PRICE_CENTS[tier];
-      await recordChange(changeDraft(id, { approvedTier: tier, approvedPriceCents: priceCents }), {
-        type: "price_approved",
-        data: { tier, priceCents },
-      });
+      await recordChange(
+        changeIfUnchanged(current, { approvedTier: tier, approvedPriceCents: priceCents }),
+        { type: "price_approved", data: { tier, priceCents } },
+      );
       return get(id);
     },
 
