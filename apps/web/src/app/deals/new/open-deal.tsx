@@ -1,4 +1,5 @@
 "use client";
+import { NO_INTAKE_FACTS } from "@exactclerk/api/deal-lifecycle";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -27,15 +28,7 @@ export default function OpenDeal() {
         </p>
       </div>
       <IntakeForm
-        initial={{
-          vin: "",
-          kind: "retail_sale",
-          outOfStateTitle: false,
-          salvage: false,
-          bonded: false,
-          powerOfAttorney: false,
-          lienPresent: false,
-        }}
+        initial={{ vin: "", kind: "retail_sale", ...NO_INTAKE_FACTS }}
         submitLabel="Save as Draft"
         pending={open.isPending || open.isSuccess}
         onSubmit={(intake) => open.mutate(intake)}

@@ -14,6 +14,14 @@ export type IntakeFacts = {
   lienPresent: boolean;
 };
 
+export const NO_INTAKE_FACTS: IntakeFacts = {
+  outOfStateTitle: false,
+  salvage: false,
+  bonded: false,
+  powerOfAttorney: false,
+  lienPresent: false,
+};
+
 export function priceTier(facts: IntakeFacts): PriceTier {
   if (facts.outOfStateTitle || facts.salvage || facts.bonded || facts.powerOfAttorney) {
     return "complex";

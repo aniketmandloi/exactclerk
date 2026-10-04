@@ -11,7 +11,13 @@ import {
 import { and, asc, desc, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { WithSubqueryWithSelection } from "drizzle-orm/pg-core";
 
-import { assertCanMove, type IntakeFacts, priceTier, TIER_PRICE_CENTS } from "./deal-lifecycle";
+import {
+  assertCanMove,
+  type IntakeFacts,
+  NO_INTAKE_FACTS,
+  priceTier,
+  TIER_PRICE_CENTS,
+} from "./deal-lifecycle";
 
 type DealerActor = Extract<Actor, { kind: "dealer" }>;
 
@@ -43,14 +49,6 @@ function priced(row: DealRow) {
   const tier = priceTier(row);
   return { ...row, tier, priceCents: TIER_PRICE_CENTS[tier] };
 }
-
-const noFacts: IntakeFacts = {
-  outOfStateTitle: false,
-  salvage: false,
-  bonded: false,
-  powerOfAttorney: false,
-  lienPresent: false,
-};
 
 export function dealRepository(db: Database, actor: Actor) {
   // Neon over HTTP has no interactive transactions, so a change to a Deal and its event are
@@ -136,7 +134,7 @@ export function dealRepository(db: Database, actor: Actor) {
     async create(input: { vin: string; kind: DealKind } & Partial<IntakeFacts>) {
       const { dealerId } = requireDealer(actor);
       const id = crypto.randomUUID();
-      const intake: Intake = { ...noFacts, ...input };
+      const intake: Intake = { ...NO_INTAKE_FACTS, ...input };
       await recordChange(
         db.$with("changed").as(
           db

@@ -1,14 +1,10 @@
+import type { IntakeFacts } from "@exactclerk/api/deal-lifecycle";
 import type { AppRouter } from "@exactclerk/api/routers/index";
 import type { inferRouterOutputs } from "@trpc/server";
 
 export type Deal = inferRouterOutputs<AppRouter>["deal"]["get"];
 export type DealKind = Deal["kind"];
-export type IntakeFact =
-  | "outOfStateTitle"
-  | "salvage"
-  | "bonded"
-  | "powerOfAttorney"
-  | "lienPresent";
+export type IntakeFact = keyof IntakeFacts;
 
 export const STATUS_LABEL: Record<Deal["status"], string> = {
   draft: "Draft",
