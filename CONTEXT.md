@@ -16,6 +16,10 @@ _Avoid_: Customer, consumer
 One vehicle sale or acquisition by a Dealer that produces title work.
 _Avoid_: Transaction, order
 
+**Price tier**:
+What a Deal costs, set by facts known when it is opened: Standard, Lien (a lienholder is involved) or Complex (out-of-state title, salvage, bonded, or a power-of-attorney sale). The Dealer approves it before the Deal leaves Draft.
+_Avoid_: Plan, package
+
 **Title Packet**:
 The documents for one Deal that a state needs in order to transfer a title.
 _Avoid_: Paperwork, submission, file
