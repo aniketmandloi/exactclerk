@@ -7,6 +7,7 @@ import Tag from "@/components/tag";
 import { authClient } from "@/lib/auth-client";
 
 import CreateDealership from "./create-dealership";
+import Deals from "./deals";
 import InviteStaff from "./invite-staff";
 
 export default function Dashboard() {
@@ -45,6 +46,8 @@ export default function Dashboard() {
           You're signed in as {isOwner ? "the owner" : "staff"}.
         </p>
       </div>
+
+      <Deals />
 
       <div className={cn("grid items-start gap-6", isOwner && "lg:grid-cols-[1fr_22rem]")}>
         <Card>
