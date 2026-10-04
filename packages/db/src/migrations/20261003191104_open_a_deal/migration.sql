@@ -10,7 +10,9 @@ CREATE TABLE "deal_event" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "deal" ADD COLUMN "kind" text NOT NULL;--> statement-breakpoint
+-- Deals made before kind existed were never opened through the app; call them retail sales.
+ALTER TABLE "deal" ADD COLUMN "kind" text NOT NULL DEFAULT 'retail_sale';--> statement-breakpoint
+ALTER TABLE "deal" ALTER COLUMN "kind" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "deal" ADD COLUMN "status" text DEFAULT 'draft' NOT NULL;--> statement-breakpoint
 ALTER TABLE "deal" ADD COLUMN "out_of_state_title" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "deal" ADD COLUMN "salvage" boolean DEFAULT false NOT NULL;--> statement-breakpoint
