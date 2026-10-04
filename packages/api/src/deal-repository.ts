@@ -23,12 +23,16 @@ type DealerActor = Extract<Actor, { kind: "dealer" }>;
 
 export type Intake = { vin: string; kind: DealKind } & IntakeFacts;
 
-type DealEventInput = {
-  type: DealEventType;
-  fromStatus?: DealStatus;
-  toStatus?: DealStatus;
-  data?: Record<string, unknown>;
-};
+type DealEvent<T extends DealEventType, Fields> = { type: T } & Fields;
+
+type DealEventInput =
+  | DealEvent<"opened", { toStatus: "draft"; data: Intake & { tier: PriceTier } }>
+  | DealEvent<
+      "intake_updated",
+      { data: Partial<Intake> & { tier: PriceTier; approvalCleared: boolean } }
+    >
+  | DealEvent<"price_approved", { data: { tier: PriceTier; priceCents: number } }>
+  | DealEvent<"status_changed", { fromStatus: DealStatus; toStatus: DealStatus }>;
 
 type DealRow = typeof deal.$inferSelect;
 
@@ -65,9 +69,9 @@ export function dealRepository(db: Database, actor: Actor) {
             actorUserId: sql`${actor.userId}`.as("actor_user_id"),
             actorRole: sql`${actor.role}`.as("actor_role"),
             type: sql`${event.type}`.as("type"),
-            fromStatus: sql`${event.fromStatus ?? null}`.as("from_status"),
-            toStatus: sql`${event.toStatus ?? null}`.as("to_status"),
-            data: sql`${event.data ? JSON.stringify(event.data) : null}::jsonb`.as("data"),
+            fromStatus: sql`${"fromStatus" in event ? event.fromStatus : null}`.as("from_status"),
+            toStatus: sql`${"toStatus" in event ? event.toStatus : null}`.as("to_status"),
+            data: sql`${"data" in event ? JSON.stringify(event.data) : null}::jsonb`.as("data"),
             createdAt: sql`now()`.as("created_at"),
           })
           .from(changed),
